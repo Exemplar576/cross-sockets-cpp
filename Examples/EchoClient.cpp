@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 
-int main()
+int maain()
 {
 	Socket s(Internetwork, Stream, TCP);
 	while (true)
