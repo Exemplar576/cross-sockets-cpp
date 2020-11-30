@@ -16,6 +16,7 @@ int main()
 	        std::cin >> msg;
 		s.Send(msg);
 		std::cout << s.Receive(4096) << std::endl;
+		s.Close();
 	    }
 	}
 	catch (SocketException e)
