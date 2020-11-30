@@ -26,5 +26,8 @@ void echo(Socket c)
         c.Send(c.Receive(4096));
         c.Close();
     }
-    catch (const std::exception) { }
+    catch (SocketException e) 
+    {
+        std::cerr << e.what() << std::endl;
+    }
 } 
