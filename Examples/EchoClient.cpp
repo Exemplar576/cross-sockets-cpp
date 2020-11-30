@@ -10,13 +10,15 @@ int amain()
 		try
 		{
 			s.Connect("10.86.7.182", 3000);
-			std::string msg;
-			std::cin >> msg;
-			s.Send(msg);
-			std::cout << s.Receive(1024) << std::endl;
-			s.Close();
+			while (true)
+			{
+				std::string msg;
+				std::cin >> msg;
+				s.Send(msg);
+				std::cout << s.Receive(1024) << std::endl;
+			}
 		}
-		catch (const std::exception& e)
+		catch (SocketException e)
 		{
 			std::cerr << e.what() << std::endl;
 		}
