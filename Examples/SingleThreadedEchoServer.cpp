@@ -26,6 +26,7 @@ int main()
             try
             {
                 receive[i].Send(receive[i].Receive(4096));
+                receive[i].Close();
             }
             catch (SocketException e) 
             {
