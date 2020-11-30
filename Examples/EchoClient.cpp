@@ -15,7 +15,7 @@ int amain()
 				std::string msg;
 				std::cin >> msg;
 				s.Send(msg);
-				std::cout << s.Receive(1024) << std::endl;
+				std::cout << s.Receive(4096) << std::endl;
 			}
 		}
 		catch (SocketException e)
