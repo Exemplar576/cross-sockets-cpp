@@ -4,7 +4,7 @@
 
 void echo(Socket c);
 
-int bmain()
+int main()
 {
     Socket s(Internetwork, Stream, TCP);
     const char* HOST = "0.0.0.0";
