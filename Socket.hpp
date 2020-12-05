@@ -52,8 +52,9 @@ public:
 	//Check socket for readability, writability, exceptions and acceptability.
 	bool Poll(SelectMode mode, int timesec = 0);
 
-	//Return the underlying socket id.
-	int SocketID();
+	//Compare Socket Values
+	friend bool operator==(Socket& lhs, Socket& rhs);
+	friend bool operator!=(Socket& lhs, Socket& rhs);
 
 	//Return the endpoint ip address of a connected client.
 	std::string RemoteEndpoint();
