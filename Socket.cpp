@@ -83,9 +83,13 @@ bool Socket::Poll(SelectMode mode, int time)
 	}
 	return false;
 }
-int Socket::SocketID()
+bool operator==(Socket& lhs, Socket& rhs)
 {
-	return this->s;
+	return lhs.s == rhs.s;
+}
+bool operator!=(Socket& lhs, Socket& rhs)
+{
+	return lhs.s != rhs.s;
 }
 std::string Socket::RemoteEndpoint()
 {
