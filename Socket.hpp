@@ -36,8 +36,6 @@ private:
 	bool client = false;
 	char remoteEndpoint[INET_ADDRSTRLEN] = "";
 	static fd_set master;
-	static int listen_s;
-	static std::vector<int> fd;
 
 public:
 	//Instantiate a default Tcp Socket.
