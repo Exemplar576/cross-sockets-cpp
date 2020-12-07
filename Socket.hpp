@@ -17,7 +17,7 @@
 enum AddressFamily { Internetwork = AF_INET, InternetworkV6 = AF_INET6 };
 enum SocketType { Stream = SOCK_STREAM, DGRAM = SOCK_DGRAM };
 enum Protocol { TCP = IPPROTO_TCP, UDP = IPPROTO_UDP };
-enum SelectMode { Read = 0, Write = 1, Error = 2, Accept = 3 };
+enum SelectMode { Read = 0, Write = 1, Error = 2 };
 #ifdef WIN32
 enum How { Both = SD_BOTH, Send = SD_SEND, Receive = SD_RECEIVE };
 #else
