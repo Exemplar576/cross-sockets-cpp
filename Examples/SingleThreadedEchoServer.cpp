@@ -13,7 +13,7 @@ int main()
     std::cout << "[+]Listening for Connections on " << HOST << " at Port " << PORT << std::endl;
     while (true)
     {
-        if (s.Poll(Accept, 1))
+        if (s.Poll(Read, 1))
         {
             Socket c = s.Accept();
             connections.push_back(c);
