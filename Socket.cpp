@@ -34,17 +34,16 @@ void Socket::Select(std::vector<Socket>* sock_list, SelectMode mode, int time)
 	timeval times;
 	times.tv_sec = time;
 	times.tv_usec = 0;
-	int sockCount = 0;
 	switch (mode)
 	{
 	case Read:
-		sockCount = select(0, &copy, nullptr, nullptr, !time ? nullptr : &times);
+		select(0, &copy, nullptr, nullptr, !time ? nullptr : &times);
 		break;
 	case Write:
-		sockCount = select(0, nullptr, &copy, nullptr, !time ? nullptr : &times);
+		select(0, nullptr, &copy, nullptr, !time ? nullptr : &times);
 		break;
 	case SelectMode::Error:
-		sockCount = select(0, nullptr, nullptr, &copy, !time ? nullptr : &times);
+		select(0, nullptr, nullptr, &copy, !time ? nullptr : &times);
 		break;
 	default:
 		throw SocketException("[SocketError] Invalid Select Flag");
