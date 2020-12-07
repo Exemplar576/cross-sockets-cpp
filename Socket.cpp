@@ -2,9 +2,7 @@
 #include <memory>
 #include <fstream>
 
-int Socket::listen_s;
 fd_set Socket::master;
-std::vector<int> Socket::fd;
 
 void Socket::Init(const char* HOST, int PORT)
 {
@@ -48,23 +46,14 @@ void Socket::Select(std::vector<Socket>* sock_list, SelectMode mode, int time)
 	case SelectMode::Error:
 		sockCount = select(0, nullptr, nullptr, &copy, !time ? nullptr : &times);
 		break;
-	case SelectMode::Accept:
-		sockCount = select(0, &copy, nullptr, nullptr, !time ? nullptr : &times);
-		break;
 	default:
 		throw SocketException("[SocketError] Invalid Select Flag");
 	}
-	for (int i = 0; i < fd.size(); i++)
+	for (int e = 0; e < sock_list->size(); e++)
 	{
-		if (FD_ISSET(fd[i], &copy) && ((mode == 0 || mode == 1 || mode == 2 && fd[i] != listen_s) || (mode == 3 && fd[i] == listen_s)))
+		if (FD_ISSET(sock_list->operator[](e).s, &copy))
 		{
-			for (int e = 0; e < sock_list->size(); e++)
-			{
-				if (sock_list->operator[](e).s == fd[i])
-				{
-					list.push_back(sock_list->operator[](e));
-				}
-			}
+			list.push_back(sock_list->operator[](e));
 		}
 	}
 	sock_list->clear();
@@ -113,8 +102,6 @@ void Socket::Listen(int backlog)
 	}
 	FD_ZERO(&master);
 	FD_SET(s, &master);
-	fd.push_back(s);
-	listen_s = s;
 }
 Socket Socket::Accept()
 {
@@ -130,7 +117,6 @@ Socket Socket::Accept()
 	inet_ntop(AF, &client_info.sin_addr, client_sock.remoteEndpoint, INET_ADDRSTRLEN);
 	client_sock.client = true;
 	FD_SET(client_sock.s, &master);
-	fd.push_back(client_sock.s);
 	return client_sock;
 }
 void Socket::Connect(std::string HOST, int PORT)
@@ -143,7 +129,6 @@ void Socket::Connect(std::string HOST, int PORT)
 	}
 	FD_ZERO(&master);
 	FD_SET(s, &master);
-	fd.push_back(s);
 }
 void Socket::Send(std::string message)
 {
@@ -240,13 +225,6 @@ void Socket::Shutdown(How flags)
 void Socket::Close()
 {
 	FD_CLR(s, &master);
-	for (int i = 0; i < fd.size(); i++)
-	{
-		if (fd[i] == s)
-		{
-			fd.erase(fd.begin() + i);
-		}
-	}
 #ifdef WIN32
 	closesocket(s);
 	if (!client)
