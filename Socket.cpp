@@ -65,11 +65,7 @@ bool Socket::Poll(SelectMode mode, int time)
 {
 	std::vector<Socket> sock = { *this };
 	Socket::Select(&sock, mode, time);
-	if (sock.size() > 0)
-	{
-		return true;
-	}
-	return false;
+	return sock.size() > 0;
 }
 bool operator==(Socket& lhs, Socket& rhs)
 {
