@@ -1,51 +1,60 @@
 #ifndef SocketLib
-#define Socketlib
+#define SocketLib
 
 #ifdef WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <windows.h>
-#pragma comment(lib, "Ws2_32.lib")
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include <windows.h>
+	#pragma comment(lib, "Ws2_32.lib")
 #else
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+	#include <sys/time.h>
+	#include <sys/types.h>
+	#include <sys/select.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+	#include <unistd.h>
 #endif
-#include <string>
 #include <vector>
+#include <string>
+#include <exception>
 
-enum AddressFamily { Internetwork = AF_INET, InternetworkV6 = AF_INET6 };
-enum SocketType { Stream = SOCK_STREAM, DGRAM = SOCK_DGRAM };
-enum Protocol { TCP = IPPROTO_TCP, UDP = IPPROTO_UDP };
-enum SelectMode { Read = 0, Write = 1, Error = 2 };
+enum class AddressFamily { Internetwork = AF_INET, InternetworkV6 = AF_INET6 };
+enum class SocketType { Stream = SOCK_STREAM, DGRAM = SOCK_DGRAM };
+enum class Protocol { TCP = IPPROTO_TCP, UDP = IPPROTO_UDP };
+enum class SelectMode { Read = 0, Write = 1, Error = 2 };
+enum class SocketProtection { Sock = SOL_SOCKET, TCP = IPPROTO_TCP, UDP = IPPROTO_UDP };
+enum class SocketOption { Broadcast = SO_BROADCAST, Reuseaddr = SO_REUSEADDR, KeepAlive = SO_KEEPALIVE };
 #ifdef WIN32
-enum How { Both = SD_BOTH, Send = SD_SEND, Receive = SD_RECEIVE };
+enum class How { Both = SD_BOTH, Send = SD_SEND, Receive = SD_RECEIVE };
 #else
-enum How { Both = SHUTDOWN_RDWR, Send = SHUTDOWN_WR, Receive = SHUTDOWN_RD };
+enum class How { Both = SHUTDOWN_RDWR, Send = SHUTDOWN_WR, Receive = SHUTDOWN_RD };
 #endif
 
 class Socket
 {
 private:
-	void Init(const char* HOST, int PORT);
-	int s = -1;
-	sockaddr_in address_info = { 0 };
-	int AF = AF_INET;
-	int TYPE = SOCK_STREAM;
-	int PROTOCOL = IPPROTO_TCP;
-	bool client = false;
-	char remoteEndpoint[INET_ADDRSTRLEN] = "";
+	void Init();
+
+	int s;
+	sockaddr_in address_info;
+	int AF;
+	int TYPE;
+	int PROTOCOL;
 	static fd_set master;
+	static bool libLoaded;
 
 public:
+
 	//Instantiate a default Tcp Socket.
 	Socket();
 
 	//Instantiate a Socket with custom parameters.
 	Socket(AddressFamily af, SocketType type, Protocol protocol);
+
+	//Socket Options
+	void SetSocketOption(SocketProtection protect, SocketOption options, BOOL active);
 
 	//Check array of sockets for readability, writability, exceptionals and acceptability.
 	static void Select(std::vector<Socket>* read, SelectMode mode, int timesec = 0);
@@ -61,27 +70,29 @@ public:
 	std::string RemoteEndpoint();
 
 	//Bind a socket to a set address and port.
-	void Bind(std::string HOST, int PORT);
+	void Bind(const char* HOST, int PORT);
 
 	//Listen for incoming connections.
 	void Listen(int backlog = 0);
 
-	//Accept and incoming socket connection.
+	//Accept an incoming socket connection.
 	Socket Accept();
 
 	//Connect to an endpoint with a set ip address and port.
-	void Connect(std::string HOST, int PORT);
+	void Connect(const char* HOST, int PORT);
 
 	//Send bytes to endpoint.
 	void Send(std::string message);
 
 	//Receive number of bytes from endpoint.
+	int Receive(char* buffer, int length);
 	std::string Receive(int bytes);
 
 	//Send DGRAM packets
 	void SendTo(std::string message);
 
 	//Receive DGRAM packets.
+	int ReceiveFrom(char* buffer, int length);
 	std::string ReceiveFrom(int bytes);
 
 	//Stream operators to send message.
@@ -91,7 +102,7 @@ public:
 	Socket& operator>>(std::string& msg);
 
 	//Send a file over the stream.
-	void SendFile(std::string path);
+	void SendFile(const char* path);
 
 	//Shutdown communication.
 	void Shutdown(How flags);
@@ -100,13 +111,21 @@ public:
 	void Close();
 };
 
-class SocketException
+class SocketException : virtual public std::exception
 {
 private:
 	const char* errors;
 public:
-	SocketException(const char* error);
-	const char* what();
+	explicit
+	SocketException(const char* error) 
+	{
+		this->errors = error;
+	};
+	virtual const char* what() const noexcept
+	{ 
+		return errors;
+	};
+	virtual ~SocketException() noexcept {}
 };
 
 #endif
