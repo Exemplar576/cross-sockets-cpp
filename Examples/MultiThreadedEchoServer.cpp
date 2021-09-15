@@ -6,7 +6,7 @@ void echo(Socket c);
 
 int main()
 {
-    Socket s(Internetwork, Stream, TCP);
+    Socket s(AddressFamily::Internetwork, SocketType::Stream, Protocol::TCP);
     const char* HOST = "0.0.0.0";
     const int PORT = 3000;
     s.Bind(HOST, PORT);
@@ -27,7 +27,7 @@ void echo(Socket c)
         c.Close();
     }
     catch (SocketException e) 
-    {
+    { 
         std::cerr << e.what() << std::endl;
     }
 } 
