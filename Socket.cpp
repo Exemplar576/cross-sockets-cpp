@@ -1,45 +1,61 @@
 #include "Socket.hpp"
 #include <memory>
+#include <algorithm>
 #include <fstream>
 
 fd_set Socket::master;
+bool Socket::libLoaded = false;
 
-void Socket::Init(const char* HOST, int PORT)
+void Socket::Init()
 {
-#ifdef WIN32
-	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	if (!libLoaded)
 	{
-		throw SocketException("[SocketError] Failed to create socket, perhaps the library is not supported on this OS.");
-	}
+#ifdef WIN32
+		WSADATA wsaData;
+		if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+		{
+			throw SocketException("[SocketError] Failed to create socket, perhaps the library is not supported on this OS.");
+		}
 #endif
+		FD_ZERO(&master);
+		libLoaded = true;
+	}
 	s = socket(AF, TYPE, PROTOCOL);
-	sockaddr_in addr;
-	inet_pton(AF, HOST, &addr.sin_addr.s_addr);
-	addr.sin_family = AF;
-	addr.sin_port = htons(PORT);
-	address_info = addr;
+	FD_SET(s, &master);
 }
-Socket::Socket() { }
+Socket::Socket() 
+{
+	AF = AF_INET;
+	TYPE = SOCK_STREAM;
+	PROTOCOL = IPPROTO_TCP;
+	Init();
+}
 Socket::Socket(AddressFamily af, SocketType type, Protocol protocol)
 {
-	AF = af;
-	TYPE = type;
-	PROTOCOL = protocol;
+	AF = (int)af;
+	TYPE = (int)type;
+	PROTOCOL = (int)protocol;
+	Init();
+}
+void Socket::SetSocketOption(SocketProtection protect, SocketOption option, BOOL active)
+{
+	if (setsockopt(s, (int)protect, (int)option, (const char*)active, sizeof(BOOL)) < 0)
+	{
+		throw SocketException("[SocketError] Failed to set option.");
+	}
 }
 void Socket::Select(std::vector<Socket>* sock_list, SelectMode mode, int time)
 {
 	fd_set copy = master;
-	std::vector<Socket> list;
 	timeval times;
 	times.tv_sec = time;
 	times.tv_usec = 0;
 	switch (mode)
 	{
-	case Read:
+	case SelectMode::Read:
 		select(0, &copy, nullptr, nullptr, !time ? nullptr : &times);
 		break;
-	case Write:
+	case SelectMode::Write:
 		select(0, nullptr, &copy, nullptr, !time ? nullptr : &times);
 		break;
 	case SelectMode::Error:
@@ -48,18 +64,7 @@ void Socket::Select(std::vector<Socket>* sock_list, SelectMode mode, int time)
 	default:
 		throw SocketException("[SocketError] Invalid Select Flag");
 	}
-	for (int e = 0; e < sock_list->size(); e++)
-	{
-		if (FD_ISSET(sock_list->operator[](e).s, &copy))
-		{
-			list.push_back(sock_list->operator[](e));
-		}
-	}
-	sock_list->clear();
-	for (int e = 0; e < list.size(); e++)
-	{
-		sock_list->push_back(list[e]);
-	}
+	std::remove_if(sock_list->begin(), sock_list->end(), [&copy](Socket sock) { return !FD_ISSET(sock.s, &copy); });
 }
 bool Socket::Poll(SelectMode mode, int time)
 {
@@ -77,11 +82,18 @@ bool operator!=(Socket& lhs, Socket& rhs)
 }
 std::string Socket::RemoteEndpoint()
 {
-	return this->remoteEndpoint;
+	int addrLength = AF == AF_INET ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN;
+	std::unique_ptr<char> buffer(new char[addrLength]);
+	inet_ntop(AF, &address_info.sin_addr, buffer.get(), addrLength);
+	return std::string(buffer.get());
 }
-void Socket::Bind(std::string HOST, int PORT)
+void Socket::Bind(const char* HOST, int PORT)
 {
-	Init(HOST.c_str(), PORT);
+	sockaddr_in addr;
+	inet_pton(AF, HOST, &addr.sin_addr.s_addr);
+	addr.sin_family = AF;
+	addr.sin_port = htons(PORT);
+	address_info = addr;
 	if (bind(s, (sockaddr*)&address_info, sizeof(address_info)) < 0)
 	{
 		this->Close();
@@ -95,8 +107,6 @@ void Socket::Listen(int backlog)
 		this->Close();
 		throw SocketException("[SocketError] Failed to start listening.");
 	}
-	FD_ZERO(&master);
-	FD_SET(s, &master);
 }
 Socket Socket::Accept()
 {
@@ -109,28 +119,47 @@ Socket Socket::Accept()
 		this->Close();
 		throw SocketException("[SocketError] Accept Error.");
 	}
-	inet_ntop(AF, &client_info.sin_addr, client_sock.remoteEndpoint, INET_ADDRSTRLEN);
-	client_sock.client = true;
+	client_sock.address_info = client_info;
 	FD_SET(client_sock.s, &master);
 	return client_sock;
 }
-void Socket::Connect(std::string HOST, int PORT)
+void Socket::Connect(const char* HOST, int PORT)
 {
-	Init(HOST.c_str(), PORT);
+	sockaddr_in addr;
+	inet_pton(AF, HOST, &addr.sin_addr.s_addr);
+	addr.sin_family = AF;
+	addr.sin_port = htons(PORT);
+	address_info = addr;
 	if (connect(s, (sockaddr*)&address_info, sizeof(address_info)) < 0)
 	{
 		this->Close();
 		throw SocketException("[SocketError] Failed to connect to the specified ip address and port.");
 	}
-	FD_ZERO(&master);
-	FD_SET(s, &master);
 }
 void Socket::Send(std::string message)
 {
-	if (send(s, message.c_str(), message.length(), 0) < 0)
+	if (send(s, message.c_str(), message.size(), 0) < 0)
 	{
 		this->Close();
 		throw SocketException("[SocketError] Failed to send bytes to host.");
+	}
+}
+int Socket::Receive(char* buffer, int length)
+{
+	int Result = recv(s, buffer, length, 0);
+	if (Result > 0)
+	{
+		return Result;
+	}
+	else if (Result == 0)
+	{
+		this->Close();
+		throw SocketException("[SocketError] Connection to the host has been closed.");
+	}
+	else
+	{
+		this->Close();
+		throw SocketException("[SocketError] Failed to receive bytes from host.");
 	}
 }
 std::string Socket::Receive(int bytes)
@@ -139,8 +168,7 @@ std::string Socket::Receive(int bytes)
 	int Result = recv(s, receive_buffer.get(), bytes, 0);
 	if (Result > 0)
 	{
-		std::string trim(receive_buffer.get(), (size_t)Result);
-		return trim;
+		return std::string(receive_buffer.get(), Result);
 	}
 	else if (Result == 0)
 	{
@@ -155,11 +183,22 @@ std::string Socket::Receive(int bytes)
 }
 void Socket::SendTo(std::string message)
 {
-	if (sendto(s, message.c_str(), message.length(), 0, (sockaddr*)&address_info, sizeof(address_info)) < 0)
+	if (sendto(s, message.c_str(), message.size(), 0, (sockaddr*)&address_info, sizeof(address_info)) < 0)
 	{
 		this->Close();
 		throw SocketException("[SocketError] Failed to send DGRAM to host.");
 	}
+}
+int Socket::ReceiveFrom(char* buffer, int length)
+{
+	socklen_t addr_size = sizeof(&address_info);
+	int Result = recvfrom(s, buffer, length, 0, (sockaddr*)&address_info, &addr_size);
+	if (Result < 0)
+	{
+		this->Close();
+		throw SocketException("[SocketError] Failed to receive DGRAM packets.");
+	}
+	return Result;
 }
 std::string Socket::ReceiveFrom(int bytes)
 {
@@ -180,15 +219,15 @@ Socket& Socket::operator<<(std::string& msg)
 }
 Socket& Socket::operator>>(std::string& msg)
 {
-	std::string ss = this->Receive(1024);
-	while (this->Poll(Read, 1))
+	std::string ss(this->Receive(1024));
+	while (this->Poll(SelectMode::Read, 1))
 	{
-		ss += this->Receive(1024);
+		ss += std::string(this->Receive(1024));
 	}
-	msg = ss;
+	msg = ss.c_str();
 	return *this;
 }
-void Socket::SendFile(std::string path)
+void Socket::SendFile(const char* path)
 {
 	std::ifstream file(path, std::ios::binary);
 	file.seekg(0, std::ios::end);
@@ -215,26 +254,21 @@ void Socket::SendFile(std::string path)
 }
 void Socket::Shutdown(How flags)
 {
-	shutdown(s, flags);
+	shutdown(s, (int)flags);
 }
 void Socket::Close()
 {
 	FD_CLR(s, &master);
 #ifdef WIN32
 	closesocket(s);
-	if (!client)
-	{
-		WSACleanup();
-	}
 #else
 	close(s);
 #endif
-}
-SocketException::SocketException(const char* error)
-{
-	errors = error;
-}
-const char* SocketException::what()
-{
-	return this->errors;
+	if (master.fd_count < 1)
+	{
+#ifdef WIN32
+		WSACleanup();
+#endif
+		libLoaded = false;
+	}
 }
