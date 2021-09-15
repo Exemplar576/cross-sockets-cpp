@@ -37,9 +37,9 @@ Socket::Socket(AddressFamily af, SocketType type, Protocol protocol)
 	PROTOCOL = (int)protocol;
 	Init();
 }
-void Socket::SetSocketOption(SocketProtection protect, SocketOption option, BOOL active)
+void Socket::SetSocketOption(SocketProtection protect, SocketOption option, bool active)
 {
-	if (setsockopt(s, (int)protect, (int)option, (const char*)active, sizeof(BOOL)) < 0)
+	if (setsockopt(s, (int)protect, (int)option, (const char*)active, sizeof(bool)) < 0)
 	{
 		throw SocketException("[SocketError] Failed to set option.");
 	}
@@ -261,14 +261,13 @@ void Socket::Close()
 	FD_CLR(s, &master);
 #ifdef WIN32
 	closesocket(s);
+	if (master.fd_count < 1)
+	{
+		WSACleanup();
+		libLoaded = false;
+	}
 #else
 	close(s);
 #endif
-	if (master.fd_count < 1)
-	{
-#ifdef WIN32
-		WSACleanup();
-#endif
-		libLoaded = false;
-	}
 }
+
