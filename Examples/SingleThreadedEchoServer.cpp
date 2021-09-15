@@ -4,7 +4,7 @@
 
 int main()
 {
-    Socket s(Internetwork, Stream, TCP);
+    Socket s(AddressFamily::Internetwork, SocketType::Stream, Protocol::TCP);
     const char* HOST = "0.0.0.0";
     const int PORT = 3000;
     s.Bind(HOST, PORT);
@@ -13,14 +13,14 @@ int main()
     std::cout << "[+]Listening for Connections on " << HOST << " at Port " << PORT << std::endl;
     while (true)
     {
-        if (s.Poll(Read, 1))
+        if (s.Poll(SelectMode::Read, 1))
         {
             Socket c = s.Accept();
             connections.push_back(c);
             std::cout << "Client Connected: " << c.RemoteEndpoint() << std::endl;
         }
         std::vector<Socket> receive = connections;
-        Socket::Select(&receive, Read);
+        Socket::Select(&receive, SelectMode::Read, 1);
         for (int i = 0; i < receive.size(); i++)
         {
             try
