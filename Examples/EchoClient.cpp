@@ -4,21 +4,21 @@
 
 int main()
 {
-    Socket s(Internetwork, Stream, TCP);
-    while (true)
-    {
-        try
-        {
-	    s.Connect("10.86.7.182", 3000);
-	    std::string msg;
-	    std::cin >> msg;
-	    s.Send(msg);
-	    std::cout << s.Receive(4096) << std::endl;
-	    s.Close();
-	}
-	catch (SocketException e)
+	while (true)
 	{
-	    std::cerr << e.what() << std::endl;
+		try
+		{
+			Socket s(AddressFamily::Internetwork, SocketType::Stream, Protocol::TCP);
+			s.Connect("192.168.1.192", 3000);
+			std::string msg;
+			std::cin >> msg;
+			s.Send(msg);
+			std::cout << s.Receive(1024) << std::endl;
+			s.Close();
+		}
+		catch (SocketException e)
+		{
+			std::cerr << e.what() << std::endl;
+		}
 	}
-    }
 }
