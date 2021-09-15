@@ -29,7 +29,7 @@ enum class SocketOption { Broadcast = SO_BROADCAST, Reuseaddr = SO_REUSEADDR, Ke
 #ifdef WIN32
 enum class How { Both = SD_BOTH, Send = SD_SEND, Receive = SD_RECEIVE };
 #else
-enum class How { Both = SHUTDOWN_RDWR, Send = SHUTDOWN_WR, Receive = SHUTDOWN_RD };
+enum class How { Both = SHUT_RDWR, Send = SHUT_WR, Receive = SHUT_RD };
 #endif
 
 class Socket
@@ -54,7 +54,7 @@ public:
 	Socket(AddressFamily af, SocketType type, Protocol protocol);
 
 	//Socket Options
-	void SetSocketOption(SocketProtection protect, SocketOption options, BOOL active);
+	void SetSocketOption(SocketProtection protect, SocketOption options, bool active);
 
 	//Check array of sockets for readability, writability, exceptionals and acceptability.
 	static void Select(std::vector<Socket>* read, SelectMode mode, int timesec = 0);
